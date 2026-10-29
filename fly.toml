@@ -1,5 +1,5 @@
 app = "inventy-v2"
-primary_region = "iad"
+primary_region = "ams"
 
 [build]
 
