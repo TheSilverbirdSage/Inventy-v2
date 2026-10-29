@@ -1,0 +1,58 @@
+# Inventory Voice Assistant Design
+
+## Intent and Why
+The goal is to create a low-friction inventory management system for a reseller. The user wants to log items (phones, laptops, etc.) and track their financial performance via voice commands, avoiding the need to manually fill out forms while working.
+
+## Goals
+- **Hands-Free Entry**: Use Telegram voice notes to add items to the inventory.
+- **Automatic Categorization**: AI identifies the item type (e.g., "iPhone 14 Pro" -> Category: Smartphone) and extracts relevant specs (Storage, Color, Condition).
+- **Flexible Schema**: Support various item types with different attributes using MongoDB.
+- **Lifecycle Tracking**: Track an item from Purchase -> Repair (Optional) -> Sale.
+- **Financial Insight**: Calculate profit per item and total portfolio value.
+
+## Non-Goals
+- A complex GUI for inventory management (all interactions happen via the Telegram Bot).
+- Multi-user organizational permissions (focused on a single-user setup).
+
+## Anti-Goals
+- Manually entering data via a web form.
+- Rigid table structures that break when a new item type is added.
+
+## Constraints
+- **Interface**: Telegram Bot API.
+- **Brain**: LangChain for orchestration and LLM for extraction/categorization.
+- **Database**: MongoDB.
+- **Input**: Voice notes (transcribed to text).
+
+## System Architecture
+
+### 1. Input Pipeline
+- **Voice Note** $\rightarrow$ **Transcription Service** (e.g., OpenAI Whisper) $\rightarrow$ **Text**.
+- **Text** $\rightarrow$ **LangChain Extractor** (LLM) $\rightarrow$ **Structured JSON**.
+
+### 2. AI Logic (The "Brain")
+The AI will act as a router and extractor:
+- **Intent Detection**: Is the user *Adding* an item, *Querying* stock, or *Selling* an item?
+- **Entity Extraction**:
+  - *Adding*: Extract Brand, Model, Specs, Condition, and Purchase Price.
+  - *Selling*: Match the item in MongoDB and extract Sale Price.
+  - *Querying*: Convert natural language into a MongoDB query.
+
+### 3. Data Model (MongoDB)
+Since the items vary, we will use a flexible document structure:
+- `category`: (e.g., "Smartphone", "Laptop")
+- `attributes`: A nested object (e.g., `{ "storage": "128GB", "ram": "8GB", "color": "Deep Blue" }`)
+- `financials`: `{ "purchase_price": 500, "repair_costs": 50, "sale_price": 700, "profit": 150 }`
+- `status`: (`"In Stock"`, `"Under Repair"`, `"Sold"`)
+- `notes`: User-provided custom notes.
+- `created_at`: Timestamp.
+
+### 4. Financial Calculation
+- **Profit** = $\text{Sale Price} - (\text{Purchase Price} + \text{Repair Costs})$.
+- The bot will provide a summary when an item is marked as sold and can provide a total profit report on request.
+
+## Builder's Notes (Implementation Details)
+- Use `python-telegram-bot` for the interface.
+- Use `pymongo` for database connectivity.
+- Use `LangChain` with `Pydantic` output parsers to ensure the AI returns a consistent JSON format for database insertion.
+- Implement a "Correction Loop": After adding an item, the bot replies with "Added: iPhone 14 Pro, 128GB, Blue. Is this correct?" allowing the user to fix mistakes.
